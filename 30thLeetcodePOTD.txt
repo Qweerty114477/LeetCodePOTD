@@ -1,0 +1,47 @@
+Number of Substrings Containing All Three Characters
+Intuition
+
+A brute-force approach checks every substring, resulting in O(n²) substrings and O(n³) time in the worst case.
+
+Instead, we use the Sliding Window (Two Pointers) technique.
+
+The key observation is:
+
+If the current window [left...right] contains at least one 'a', 'b', and 'c', then every substring starting at left and ending at any index from right to n-1 is also valid.
+Therefore, we can directly add n - right valid substrings to the answer instead of checking each one individually.
+Algorithm
+Maintain a sliding window using two pointers left and right.
+Store the frequency of 'a', 'b', and 'c' inside the current window.
+Expand the window by moving right.
+Whenever the window contains all three characters:
+Add n - right to the answer.
+Shrink the window from the left until it becomes invalid again.
+Continue until the entire string is processed.
+Complexity Analysis
+Time Complexity: O(n)
+Each character enters and leaves the window at most once.
+Space Complexity: O(1)
+Only the frequencies of three characters are stored.
+C++ Solution
+class Solution {
+public:
+    int numberOfSubstrings(string s) {
+        int n = s.size();
+        vector<int> freq(3, 0);
+        int left = 0, ans = 0;
+
+        for (int right = 0; right < n; right++) {
+            freq[s[right] - 'a']++;
+
+            while (freq[0] && freq[1] && freq[2]) {
+                ans += (n - right);
+                freq[s[left] - 'a']--;
+                left++;
+            }
+        }
+
+        return ans;
+    }
+};
+
+This approach efficiently counts all valid substrings in linear time using the sliding window technique.
