@@ -1,0 +1,302 @@
+Shortest Path Queries in Value Graph
+Intuition
+
+The graph is defined by the values in nums, not by the indices.
+
+An edge exists between two nodes if
+
+∣nums[i]−nums[j]∣≤maxDiff
+
+Building all edges is impossible because there can be O(n²) edges.
+
+The key observation is:
+
+After sorting the nodes by their values, every node can only directly connect to a continuous range of nodes on its right.
+
+For example,
+
+nums = [1, 2, 3, 4, 8]
+maxDiff = 2
+
+Sorted values:
+1 2 3 4 8
+
+1 -> 2,3
+2 -> 3,4
+3 -> 4
+4 -> -
+8 -> -
+
+Notice that the reachable nodes always form one continuous interval.
+
+This property allows us to preprocess jumps efficiently.
+
+Step 1 : Sort the Nodes
+
+Store
+
+(value, originalIndex)
+
+and sort by value.
+
+Example
+
+nums = [5,3,1,9,10]
+
+Sorted
+
+value index
+
+1     2
+3     1
+5     0
+9     3
+10    4
+
+We also store
+
+pos[originalIndex] = position in sorted array
+
+because every query is given using original indices.
+
+Step 2 : Find the Farthest Reachable Node
+
+Use the two-pointer technique.
+
+For every sorted position l, find the largest position r such that
+
+arr[r].value - arr[l].value <= maxDiff
+
+Since both pointers only move forward, this takes O(n).
+
+Example
+
+values
+
+1 2 3 4 8
+
+maxDiff = 2
+
+up[][0]
+
+1 -> 3
+2 -> 4
+3 -> 4
+4 -> 4
+8 -> 8
+
+This means
+
+from position i
+one jump can reach up[i][0]
+Step 3 : Binary Lifting
+
+Now treat
+
+up[i][0]
+
+as one jump.
+
+Construct
+
+up[i][j]
+
+where
+
+up[i][j]
+
+is the farthest position reachable after
+
+2^j
+
+jumps.
+
+Transition:
+
+up[i][j] = up[ up[i][j-1] ][j-1];
+
+Exactly the same idea as binary lifting on trees.
+
+Preprocessing complexity:
+
+O(n log n)
+Step 4 : Answer Queries
+
+Convert both original indices into sorted positions.
+
+src = pos[u]
+dest = pos[v]
+
+Always make
+
+src <= dest
+
+because movement in sorted order is symmetric.
+
+Now greedily jump from largest power of two to smallest.
+
+If
+
+up[curr][j] < dest
+
+we can safely make that jump.
+
+Finally,
+
+if one more jump reaches the destination, answer is found
+otherwise no path exists.
+Example
+nums = [5,3,1,9,10]
+maxDiff = 2
+
+Sorted
+
+1 3 5 9 10
+
+Query
+
+0 -> 2
+
+Original positions become
+
+5 -> position 2
+1 -> position 0
+
+After sorting
+
+src = 0
+dest = 2
+
+One jump
+
+1 -> 3
+
+Second jump
+
+3 -> 5
+
+Answer
+
+2
+Why Does This Work?
+
+Suppose we are standing at some sorted position.
+
+Instead of jumping to every possible neighbor, it is always optimal to jump to the farthest reachable node.
+
+Reason:
+
+every nearer node is also reachable from the farthest node,
+jumping farther never loses any future possibilities,
+therefore the minimum number of jumps is obtained by always maximizing progress.
+
+Binary lifting simply speeds up this greedy jumping process.
+
+Complexity Analysis
+
+Sorting
+
+O(n log n)
+
+Two pointers
+
+O(n)
+
+Binary lifting table
+
+O(n log n)
+
+Each query
+
+O(log n)
+
+Overall
+
+Time:
+O((n + q) log n)
+
+Space:
+O(n log n)
+
+where
+
+n = number of nodes
+q = number of queries.
+C++ Code
+class Solution {
+public:
+    vector<int> pathExistenceQueries(int n, vector<int>& nums, int maxDiff,
+                                     vector<vector<int>>& queries) {
+
+        vector<pair<int,int>> arr;
+
+        for(int i=0;i<n;i++)
+            arr.push_back({nums[i],i});
+
+        sort(arr.begin(),arr.end());
+
+        vector<int> pos(n);
+
+        for(int i=0;i<n;i++)
+            pos[arr[i].second]=i;
+
+        int LOG=1;
+        while((1<<LOG)<n)
+            LOG++;
+
+        vector<vector<int>> up(n,vector<int>(LOG));
+
+        int r=0;
+
+        for(int l=0;l<n;l++){
+
+            if(r<l)
+                r=l;
+
+            while(r+1<n &&
+                  arr[r+1].first-arr[l].first<=maxDiff)
+                r++;
+
+            up[l][0]=r;
+        }
+
+        for(int j=1;j<LOG;j++)
+            for(int i=0;i<n;i++)
+                up[i][j]=up[up[i][j-1]][j-1];
+
+        vector<int> ans;
+
+        for(auto &q:queries){
+
+            int src=pos[q[0]];
+            int dest=pos[q[1]];
+
+            if(src>dest)
+                swap(src,dest);
+
+            if(src==dest){
+                ans.push_back(0);
+                continue;
+            }
+
+            int curr=src;
+            int jumps=0;
+
+            for(int j=LOG-1;j>=0;j--){
+
+                if(up[curr][j]<dest){
+
+                    curr=up[curr][j];
+                    jumps+=(1<<j);
+                }
+            }
+
+            if(up[curr][0]>=dest)
+                ans.push_back(jumps+1);
+            else
+                ans.push_back(-1);
+        }
+
+        return ans;
+    }
+};
